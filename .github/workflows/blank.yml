@@ -1,0 +1,185 @@
+## R Script, Experiment 3: State Suspicion as a Predictor of Compliance to a Confidence trick
+
+## LOAD DATA + FUNCTIONS
+
+## Load the data
+    library(readxl)
+    df <- read_excel("E3.xlsx")
+    View(df)
+
+## Install the required functions for the Logistic Regression, Cross-Validation and plotting
+    install.packages('caret', dependencies = TRUE)
+    install.packages('cowplot')
+
+## Load the functions
+    library("caret")
+    library("ggplot2”)
+    library(“cowplot”) 
+
+## PREP THE DATASET
+
+## Change the description of the outcome variable
+    df$Engagement[df$Engagement==1] <- "Engaged"
+    df$Engagement[df$Engagement==0] <- "Did not Engage"
+
+## Convert the outcome variable to type factor and check it’s classification afterwards
+    df$Engagement <- as.factor(df$Engagement)
+    class(df$Engagement)
+
+## PERFORM THE LOGISTIC REGRESSION ENGAGEMENT PREDICTED BY STATE-SUSPICION
+
+## Perform the logistic regression
+    mylogit <- glm(Engagement ~ STATE, data = df, family = "binomial")
+
+## View output of logistic regression 
+    summary(mylogit)
+
+# View odd ratios and 95% CI
+    exp(cbind(OR = coef(mylogit), confint(mylogit)))
+
+## Calculate the ‘McFadden’s’ Pseudo R-squared
+    ll.null <- mylogit$null.deviance/-2
+    ll.proposed <- mylogit$deviance/-2
+    (ll.null - ll.proposed) / ll.null
+
+## …and the p-value
+    1 - pchisq(2*(ll.proposed - ll.null), df=1)
+    1 - pchisq((mylogit$null.deviance - mylogit$deviance), df=1)
+
+## CROSS VALIDATION
+
+## Set a random seed
+    set.seed(1995)
+
+## Create the index matrix
+    trainindex <- createDataPartition(df$Engagement, p=.8, list=FALSE, times=1)
+
+## Create the train_df and test_df to be used for Cross Validation
+    train_df <- df[trainindex,]
+    test_df <- df[-trainindex,]
+
+## Specify the type of training method used (Cross Validation) & number of folds (K=10) 
+    ctrlspecs <- trainControl(method="cv", number=10,
+                          savePredictions="all",
+                          classProbs=FALSE)
+                          
+## Set a random seed
+    set.seed(1995)
+    
+## Specify the model being used (which will be a Logistic Regression)
+    model1 <- train(Engagement ~ STATE, 
+                data=train_df,
+                method="glm", family=binomial,
+                trControl=ctrlspecs)
+    print(model1)
+
+## View output in terms of regression co-efficients 
+    summary(model1)
+
+## PLOTTING THE PREDICTIONS OF THE LOGISTIC REGRESSION (OVERALL STATE-SUSPICION)
+
+## Plotting what the Logistic Regression predicts, based on overall state-suspicion scores
+    predicted.data <- data.frame(
+        probability.of.engagement=mylogit$fitted.values)
+    predicted.data <- data.frame(
+        probability.of.engagement=mylogit$fitted.values,
+        STATE=df$STATE)
+    ggplot(data=predicted.data, aes(x=STATE, y=probability.of.engagement)) +
+        geom_point(aes(color=STATE), size=5) +
+        xlab("Overall State-Suspicion") +
+        ylab("Predicted Probability of Engagement")
+
+
+## PART TWO
+
+## PERFORM THE LOGISTIC REGRESSION ENGAGEMENT PREDICTED BY INDIVIDUAL COMPONENTS OF STATE-SUSPICION
+
+## Perform the logistic regression
+    mylogit2 <- glm(Engagement ~ UNC+COG+SUS+MAL, data = df, family = "binomial")
+
+## View output of logistic regression 
+    summary(mylogit2)
+
+# View odd ratios and 95% CI
+    exp(cbind(OR = coef(mylogit2), confint(mylogit2)))
+
+## Calculate the ‘McFadden’s’ Pseudo R-squared
+    ll.null <- mylogit2$null.deviance/-2
+    ll.proposed <- mylogit2$deviance/-2
+    (ll.null - ll.proposed) / ll.null
+
+## …and the p-value
+    1 - pchisq(2*(ll.proposed - ll.null), df=1)
+    1 - pchisq((mylogit2$null.deviance – mylogit2$deviance), df=1)
+ 
+## CROSS VALIDATION
+
+## Set a random seed
+    set.seed(1995)
+## Specify the model being used (which will be a Logistic Regression)
+    model2 <- train(Engagement ~ UNC+COG+SUS+MAL, 
+                data=train_df,
+                method="glm", family=binomial,
+                trControl=ctrlspecs)
+    print(model2)
+
+ 
+## View output in terms of regression co-efficients 
+    summary(model2)
+ 
+
+## PLOTTING THE PREDICTIONS OF THE LOGISTIC REGRESSION USING INDIVIDUAL COMPONENTS
+
+## ...based on Uncertainty
+    predicted.data2 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values)
+    predicted.data2 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values,
+        UNC=df$UNC)
+    ggplot(data=predicted.data2, aes(x=UNC, y=probability.of.engagement)) +
+        geom_point(aes(color=UNC), size=5) +
+        xlab("Uncertainty") +
+        ylab("Predicted Probability of Engagement")
+ 
+
+## ...based on Cognitive Activity
+    predicted.data3 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values)
+    predicted.data3 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values,
+        COG=df$COG)
+    ggplot(data=predicted.data3, aes(x=COG, y=probability.of.engagement)) +
+        geom_point(aes(color=COG), size=5) +
+        xlab("Cognitive Activity") +
+        ylab("Predicted Probability of Engagement")
+
+## ...based on Suspicion
+    predicted.data4 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values)
+    predicted.data4 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values,
+        SUS=df$SUS)
+    ggplot(data=predicted.data4, aes(x=SUS, y=probability.of.engagement)) +
+        geom_point(aes(color=SUS), size=5) +
+        xlab("Suspicion") +
+        ylab("Predicted Probability of Engagement")
+
+## ...based on Perceived Malintent
+    predicted.data5 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values)
+    predicted.data5 <- data.frame(
+        probability.of.engagement=mylogit2$fitted.values,
+        MAL=df$MAL)
+    ggplot(data=predicted.data5, aes(x=MAL, y=probability.of.engagement)) +
+        geom_point(aes(color=MAL), size=5) +
+        xlab("Perceived Malintent") +
+        ylab("Predicted Probability of Engagement")
+
+ 
+
+
+
+
+
+
+
